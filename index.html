@@ -33,6 +33,7 @@
     <script type="module">
         import * as THREE from 'three';
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         const G = 1; // Gravitational constant
         const dt = 0.01; // Time step
@@ -79,6 +80,10 @@
             textureLoader.load('/textures/texture2.jpg'),
             textureLoader.load('/textures/texture3.jpg')
         ];
+
+        var controls = new OrbitControls(camera, renderer.domElement);
+		controls.enableDamping = true;
+		controls.dampingFactor = 0.05;
 
         // Load HDR texture
         new RGBELoader()
