@@ -44,24 +44,40 @@
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1;
         renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Default shadow type
         document.body.appendChild(renderer.domElement);
 
         // Add lighting to the scene
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
         scene.add(ambientLight);
 
-        const pointLight = new THREE.PointLight(0xffffff, 1); // Strong white light
-        pointLight.position.set(5, 5, 5);
-        scene.add(pointLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(0, 5, 5); // Move the light closer to the front
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
+        directionalLight.shadow.camera.near = 0.1;
+        directionalLight.shadow.camera.far = 50;
+        scene.add(directionalLight);
+
+        // Add a plane to receive shadows
+        const planeGeometry = new THREE.PlaneGeometry(10, 10);
+        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.5 });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -2;
+        plane.receiveShadow = true;
+        scene.add(plane);
 
         let bodies = [];
         let animationId;
 
         const textureLoader = new THREE.TextureLoader();
         const textures = [
-            textureLoader.load('/textures/grass.jpg'),
-            textureLoader.load('/textures/rock.jpg'),
-            textureLoader.load('/textures/ground.jpg')
+            textureLoader.load('/textures/texture1.jpg'),
+            textureLoader.load('/textures/texture2.jpg'),
+            textureLoader.load('/textures/texture3.jpg')
         ];
 
         // Load HDR texture
@@ -78,9 +94,16 @@
         function createBodies() {
             const geometry = new THREE.SphereGeometry(0.2, 32, 32); // Increased the radius to 0.2
 
-            const body1 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[0] }));
-            const body2 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[1] }));
-            const body3 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[2] }));
+            const body1 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[0], normalMap: textures[0] }));
+            const body2 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[1], normalMap: textures[1] }));
+            const body3 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[2], normalMap: textures[2] }));
+
+            body1.castShadow = true;
+            body1.receiveShadow = true;
+            body2.castShadow = true;
+            body2.receiveShadow = true;
+            body3.castShadow = true;
+            body3.receiveShadow = true;
 
             scene.add(body1);
             scene.add(body2);
@@ -102,9 +125,9 @@
             const getRandomWeight = () => THREE.MathUtils.randFloat(0.5, 2);
 
             bodies = [
-                { mesh: body1, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight() },
-                { mesh: body2, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight() },
-                { mesh: body3, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight() }
+                { mesh: body1, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
+                { mesh: body2, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
+                { mesh: body3, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) }
             ];
 
             for (const body of bodies) {
@@ -121,7 +144,8 @@
                 cancelAnimationFrame(animationId);
                 scene.clear();
                 scene.add(ambientLight); // Re-add the lights after clearing the scene
-                scene.add(pointLight);
+                scene.add(directionalLight);
+                scene.add(plane); // Re-add the plane after clearing the scene
                 createBodies();
                 animate();
             });
@@ -134,8 +158,16 @@
                     if (i !== j) {
                         const direction = new THREE.Vector3().subVectors(bodies[j].position, bodies[i].position);
                         const distance = Math.max(direction.length(), 0.1); // Avoid division by zero or extremely small distances
-                        const f = G * bodies[i].weight * bodies[j].weight / (distance * distance);
-                        force.add(direction.normalize().multiplyScalar(f));
+                        if (distance < bodies[i].radius + bodies[j].radius) {
+                            // Collision detected, separate bodies
+                            const overlap = (bodies[i].radius + bodies[j].radius) - distance;
+                            direction.normalize();
+                            bodies[i].position.add(direction.multiplyScalar(-overlap / 2));
+                            bodies[j].position.add(direction.multiplyScalar(overlap / 2));
+                        } else {
+                            const f = G * bodies[i].weight * bodies[j].weight / (distance * distance);
+                            force.add(direction.normalize().multiplyScalar(f));
+                        }
                     }
                 }
                 bodies[i].velocity.add(force.multiplyScalar(dt / bodies[i].weight));
@@ -146,6 +178,11 @@
             for (const body of bodies) {
                 body.position.add(body.velocity.clone().multiplyScalar(dt));
                 body.mesh.position.copy(body.position);
+
+                // Rotate the bodies
+                body.mesh.rotation.x += body.rotationSpeed.x;
+                body.mesh.rotation.y += body.rotationSpeed.y;
+                body.mesh.rotation.z += body.rotationSpeed.z;
 
                 // Constrain the positions to stay within the screen
                 body.position.clamp(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5));
