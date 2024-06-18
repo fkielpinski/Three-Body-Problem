@@ -81,9 +81,9 @@
             textureLoader.load('/textures/texture3.jpg')
         ];
 
-        var controls = new OrbitControls(camera, renderer.domElement);
-		controls.enableDamping = true;
-		controls.dampingFactor = 0.05;
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
 
         // Load HDR texture
         new RGBELoader()
@@ -97,22 +97,22 @@
             });
 
         function createBodies() {
-            const geometry = new THREE.SphereGeometry(0.2, 32, 32); // Increased the radius to 0.2
+            const createBody = (texture) => {
+                const radius = THREE.MathUtils.randFloat(0.1, 0.5); // Random radius between 0.1 and 0.5
+                const geometry = new THREE.SphereGeometry(radius, 32, 32);
+                const material = new THREE.MeshStandardMaterial({ map: texture, normalMap: texture });
 
-            const body1 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[0], normalMap: textures[0] }));
-            const body2 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[1], normalMap: textures[1] }));
-            const body3 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[2], normalMap: textures[2] }));
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
 
-            body1.castShadow = true;
-            body1.receiveShadow = true;
-            body2.castShadow = true;
-            body2.receiveShadow = true;
-            body3.castShadow = true;
-            body3.receiveShadow = true;
+                return { mesh, radius };
+            };
 
-            scene.add(body1);
-            scene.add(body2);
-            scene.add(body3);
+            const body1 = createBody(textures[0]);
+            const body2 = createBody(textures[1]);
+            const body3 = createBody(textures[2]);
 
             // Random initial positions and velocities
             const getRandomPosition = () => new THREE.Vector3(
@@ -130,9 +130,9 @@
             const getRandomWeight = () => THREE.MathUtils.randFloat(0.5, 2);
 
             bodies = [
-                { mesh: body1, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
-                { mesh: body2, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
-                { mesh: body3, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) }
+                { ...body1, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
+                { ...body2, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
+                { ...body3, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) }
             ];
 
             for (const body of bodies) {
