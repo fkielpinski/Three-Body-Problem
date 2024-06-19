@@ -1,28 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three-Body Problem Simulation with HDR Background</title>
-    <style>
-        body { margin: 0; }
-        canvas { display: block; }
-        #resetButton {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 1;
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #fff;
-            border: none;
-            cursor: pointer;
-        }
-    </style>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Three-Body Problem Simulation with HDR Background</title>
+	<style>
+		body {
+			margin: 0;
+		}
+
+		canvas {
+			display: block;
+		}
+
+		#resetButton {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+			z-index: 1;
+			padding: 10px 20px;
+			font-size: 16px;
+			background-color: #fff;
+			border: none;
+			cursor: pointer;
+		}
+	</style>
 </head>
+
 <body>
-    <button id="resetButton">Reset</button>
-    <script type="importmap">
+	<button id="resetButton">Reset</button>
+	<script type="importmap">
     {
         "imports": {
             "three": "./js/three.module.js",
@@ -30,176 +38,233 @@
         }
     }
     </script>
-    <script type="module">
-        import * as THREE from 'three';
-        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+	<script type="module">
+		import * as THREE from 'three';
+		import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        const G = 1; // Gravitational constant
-        const dt = 0.01; // Time step
+		const G = 1; // Gravitational constant
+		const dt = 0.01; // Time step
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1;
-        renderer.outputEncoding = THREE.sRGBEncoding;
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Default shadow type
-        document.body.appendChild(renderer.domElement);
+		const scene = new THREE.Scene();
+		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+		const renderer = new THREE.WebGLRenderer();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.toneMapping = THREE.ACESFilmicToneMapping;
+		renderer.toneMappingExposure = 1;
+		renderer.outputEncoding = THREE.sRGBEncoding;
+		renderer.shadowMap.enabled = true;
+		renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Default shadow type
+		document.body.appendChild(renderer.domElement);
 
-        // Add lighting to the scene
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
-        scene.add(ambientLight);
+		// Add lighting to the scene
+		const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
+		scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(0, 5, 5); // Move the light closer to the front
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 1024;
-        directionalLight.shadow.mapSize.height = 1024;
-        directionalLight.shadow.camera.near = 0.1;
-        directionalLight.shadow.camera.far = 50;
-        scene.add(directionalLight);
+		const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+		directionalLight.position.set(0, 5, 5); // Move the light closer to the front
+		directionalLight.castShadow = true;
+		directionalLight.shadow.mapSize.width = 1024;
+		directionalLight.shadow.mapSize.height = 1024;
+		directionalLight.shadow.camera.near = 0.1;
+		directionalLight.shadow.camera.far = 50;
+		scene.add(directionalLight);
 
-        // Add a plane to receive shadows
-        const planeGeometry = new THREE.PlaneGeometry(10, 10);
-        const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.5 });
-        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-        plane.rotation.x = -Math.PI / 2;
-        plane.position.y = -2;
-        plane.receiveShadow = true;
-        scene.add(plane);
+		// Add a plane to receive shadows
+		const planeGeometry = new THREE.PlaneGeometry(10, 10);
+		const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.5 });
+		const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+		plane.rotation.x = -Math.PI / 2;
+		plane.position.y = -2;
+		plane.receiveShadow = true;
+		scene.add(plane);
 
-        let bodies = [];
-        let animationId;
+		let bodies = [];
+		let animationId;
 
-        const textureLoader = new THREE.TextureLoader();
-        const textures = [
-            textureLoader.load('/textures/texture1.jpg'),
-            textureLoader.load('/textures/texture2.jpg'),
-            textureLoader.load('/textures/texture3.jpg')
-        ];
+		const textureLoader = new THREE.TextureLoader();
+		const textures = [
+			textureLoader.load('/textures/texture1.jpg'),
+			textureLoader.load('/textures/texture2.jpg'),
+			textureLoader.load('/textures/texture3.jpg')
+		];
 
-        var controls = new OrbitControls(camera, renderer.domElement);
+		var controls = new OrbitControls(camera, renderer.domElement);
 		controls.enableDamping = true;
 		controls.dampingFactor = 0.05;
 
-        // Load HDR texture
-        new RGBELoader()
-            .setPath('/textures/')
-            .load('HDR_space.hdr', function(texture) {
-                texture.mapping = THREE.EquirectangularReflectionMapping;
-                scene.background = texture;
-                scene.environment = texture;
-                init();
-                animate();
-            });
+		// Load HDR texture
+		new RGBELoader()
+			.setPath('/textures/')
+			.load('HDR_space.hdr', function (texture) {
+				texture.mapping = THREE.EquirectangularReflectionMapping;
+				scene.background = texture;
+				scene.environment = texture;
+				init();
+				animate();
+			});
 
-        function createBodies() {
-            const geometry = new THREE.SphereGeometry(0.2, 32, 32); // Increased the radius to 0.2
+		function createBody(texture) {
+			const geometry = new THREE.SphereGeometry(0.2, 32, 32); // Increased the radius to 0.2
+			const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: texture, normalMap: texture }));
 
-            const body1 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[0], normalMap: textures[0] }));
-            const body2 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[1], normalMap: textures[1] }));
-            const body3 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[2], normalMap: textures[2] }));
+			mesh.castShadow = true;
+			mesh.receiveShadow = true;
 
-            body1.castShadow = true;
-            body1.receiveShadow = true;
-            body2.castShadow = true;
-            body2.receiveShadow = true;
-            body3.castShadow = true;
-            body3.receiveShadow = true;
+			scene.add(mesh);
 
-            scene.add(body1);
-            scene.add(body2);
-            scene.add(body3);
+			const getRandomPosition = () => new THREE.Vector3(
+				THREE.MathUtils.randFloatSpread(2),
+				THREE.MathUtils.randFloatSpread(2),
+				THREE.MathUtils.randFloatSpread(2)
+			);
 
-            // Random initial positions and velocities
-            const getRandomPosition = () => new THREE.Vector3(
-                THREE.MathUtils.randFloatSpread(2),
-                THREE.MathUtils.randFloatSpread(2),
-                THREE.MathUtils.randFloatSpread(2)
-            );
+			const getRandomVelocity = () => new THREE.Vector3(
+				THREE.MathUtils.randFloatSpread(0.1),
+				THREE.MathUtils.randFloatSpread(0.1),
+				THREE.MathUtils.randFloatSpread(0.1)
+			);
 
-            const getRandomVelocity = () => new THREE.Vector3(
-                THREE.MathUtils.randFloatSpread(0.1),
-                THREE.MathUtils.randFloatSpread(0.1),
-                THREE.MathUtils.randFloatSpread(0.1)
-            );
+			const getRandomWeight = () => THREE.MathUtils.randFloat(0.5, 2);
 
-            const getRandomWeight = () => THREE.MathUtils.randFloat(0.5, 2);
+			// TRAIL EFFECT //
+			// Set trail material
+			var traj_material = new THREE.LineBasicMaterial();
+			traj_material.color.setRGB(70, 70, 250);
+			traj_material.flatShading = true;
 
-            bodies = [
-                { mesh: body1, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
-                { mesh: body2, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
-                { mesh: body3, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) }
-            ];
+			// Set trail geometry
+			var traj_geometry = new THREE.BufferGeometry();
+			var trace_array = new Array(max_points * 3).fill(0);
+			traj_geometry.setAttribute("position", new THREE.Float32BufferAttribute(trace_array, 3));
+			var drawCount = 0;
+			var trajectory = new THREE.Line(traj_geometry, traj_material);
 
-            for (const body of bodies) {
-                body.mesh.position.copy(body.position);
-            }
+			// Add trajectory mesh to the scene
+			scene.add(trajectory);
 
-            camera.position.z = 5;
-        }
+			var body = {
+				mesh: body,
+				position: getRandomPosition(),
+				velocity: getRandomVelocity(),
+				weight: getRandomWeight(),
+				radius: 0.2,
+				rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01),
+				trace_array: trace_array,
+				traj_geometry: traj_geometry,
+				drawCount: drawCount
+			};
 
-        function init() {
-            createBodies();
+			bodies.push(body);
+		}
 
-            document.getElementById('resetButton').addEventListener('click', () => {
-                cancelAnimationFrame(animationId);
-                scene.clear();
-                scene.add(ambientLight); // Re-add the lights after clearing the scene
-                scene.add(directionalLight);
-                scene.add(plane); // Re-add the plane after clearing the scene
-                createBodies();
-                animate();
-            });
-        }
+		function createBodies() {
+			const geometry = new THREE.SphereGeometry(0.2, 32, 32); // Increased the radius to 0.2
 
-        function computeForces() {
-            for (let i = 0; i < bodies.length; i++) {
-                let force = new THREE.Vector3(0, 0, 0);
-                for (let j = 0; j < bodies.length; j++) {
-                    if (i !== j) {
-                        const direction = new THREE.Vector3().subVectors(bodies[j].position, bodies[i].position);
-                        const distance = Math.max(direction.length(), 0.1); // Avoid division by zero or extremely small distances
-                        if (distance < bodies[i].radius + bodies[j].radius) {
-                            // Collision detected, separate bodies
-                            const overlap = (bodies[i].radius + bodies[j].radius) - distance;
-                            direction.normalize();
-                            bodies[i].position.add(direction.multiplyScalar(-overlap / 2));
-                            bodies[j].position.add(direction.multiplyScalar(overlap / 2));
-                        } else {
-                            const f = G * bodies[i].weight * bodies[j].weight / (distance * distance);
-                            force.add(direction.normalize().multiplyScalar(f));
-                        }
-                    }
-                }
-                bodies[i].velocity.add(force.multiplyScalar(dt / bodies[i].weight));
-            }
-        }
+			const body1 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[0], normalMap: textures[0] }));
+			const body2 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[1], normalMap: textures[1] }));
+			const body3 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[2], normalMap: textures[2] }));
 
-        function updatePositions() {
-            for (const body of bodies) {
-                body.position.add(body.velocity.clone().multiplyScalar(dt));
-                body.mesh.position.copy(body.position);
+			body1.castShadow = true;
+			body1.receiveShadow = true;
+			body2.castShadow = true;
+			body2.receiveShadow = true;
+			body3.castShadow = true;
+			body3.receiveShadow = true;
 
-                // Rotate the bodies
-                body.mesh.rotation.x += body.rotationSpeed.x;
-                body.mesh.rotation.y += body.rotationSpeed.y;
-                body.mesh.rotation.z += body.rotationSpeed.z;
+			scene.add(body1);
+			scene.add(body2);
+			scene.add(body3);
 
-                // Constrain the positions to stay within the screen
-                body.position.clamp(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5));
-            }
-        }
+			// Random initial positions and velocities
+			const getRandomPosition = () => new THREE.Vector3(
+				THREE.MathUtils.randFloatSpread(2),
+				THREE.MathUtils.randFloatSpread(2),
+				THREE.MathUtils.randFloatSpread(2)
+			);
 
-        function animate() {
-            animationId = requestAnimationFrame(animate);
-            computeForces();
-            updatePositions();
-            renderer.render(scene, camera);
-        }
-    </script>
+			const getRandomVelocity = () => new THREE.Vector3(
+				THREE.MathUtils.randFloatSpread(0.1),
+				THREE.MathUtils.randFloatSpread(0.1),
+				THREE.MathUtils.randFloatSpread(0.1)
+			);
+
+			const getRandomWeight = () => THREE.MathUtils.randFloat(0.5, 2);
+
+			bodies = [
+				{ mesh: body1, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
+				{ mesh: body2, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
+				{ mesh: body3, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) }
+			];
+
+			for (const body of bodies) {
+				body.mesh.position.copy(body.position);
+			}
+
+			camera.position.z = 5;
+		}
+
+		function init() {
+			createBodies();
+			test();
+
+			document.getElementById('resetButton').addEventListener('click', () => {
+				cancelAnimationFrame(animationId);
+				scene.clear();
+				scene.add(ambientLight); // Re-add the lights after clearing the scene
+				scene.add(directionalLight);
+				scene.add(plane); // Re-add the plane after clearing the scene
+				createBodies();
+				animate();
+			});
+		}
+
+		function computeForces() {
+			for (let i = 0; i < bodies.length; i++) {
+				let force = new THREE.Vector3(0, 0, 0);
+				for (let j = 0; j < bodies.length; j++) {
+					if (i !== j) {
+						const direction = new THREE.Vector3().subVectors(bodies[j].position, bodies[i].position);
+						const distance = Math.max(direction.length(), 0.1); // Avoid division by zero or extremely small distances
+						if (distance < bodies[i].radius + bodies[j].radius) {
+							// Collision detected, separate bodies
+							const overlap = (bodies[i].radius + bodies[j].radius) - distance;
+							direction.normalize();
+							bodies[i].position.add(direction.multiplyScalar(-overlap / 2));
+							bodies[j].position.add(direction.multiplyScalar(overlap / 2));
+						} else {
+							const f = G * bodies[i].weight * bodies[j].weight / (distance * distance);
+							force.add(direction.normalize().multiplyScalar(f));
+						}
+					}
+				}
+				bodies[i].velocity.add(force.multiplyScalar(dt / bodies[i].weight));
+			}
+		}
+
+		function updatePositions() {
+			for (const body of bodies) {
+				body.position.add(body.velocity.clone().multiplyScalar(dt));
+				body.mesh.position.copy(body.position);
+
+				// Rotate the bodies
+				body.mesh.rotation.x += body.rotationSpeed.x;
+				body.mesh.rotation.y += body.rotationSpeed.y;
+				body.mesh.rotation.z += body.rotationSpeed.z;
+
+				// Constrain the positions to stay within the screen
+				body.position.clamp(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5));
+			}
+		}
+
+		function animate() {
+			animationId = requestAnimationFrame(animate);
+			computeForces();
+			updatePositions();
+			renderer.render(scene, camera);
+		}
+	</script>
+	<script type="module" src="./physics.js"></script>
 </body>
+
 </html>
