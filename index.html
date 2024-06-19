@@ -44,8 +44,8 @@
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 		const G = 1; // Gravitational constant
-		const dt = 0.01; // Time step
-		const max_points = 400; // Points for trailing effect
+		const dt = 0.005; // Time step
+		const max_points = 400; // Max points when rendering trail effect
 
 		const scene = new THREE.Scene();
 		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -87,7 +87,10 @@
 		const textures = [
 			textureLoader.load('/textures/texture1.jpg'),
 			textureLoader.load('/textures/texture2.jpg'),
-			textureLoader.load('/textures/texture3.jpg')
+			textureLoader.load('/textures/texture3.jpg'),
+			textureLoader.load('/textures/texture4.jpg'),
+			textureLoader.load('/textures/texture5.jpg'),
+			textureLoader.load('/textures/texture6.jpg')
 		];
 
 		var controls = new OrbitControls(camera, renderer.domElement);
@@ -131,7 +134,7 @@
 			// TRAIL EFFECT //
 			// Set trail material
 			var trail_mat = new THREE.LineBasicMaterial();
-			trail_mat.color.setRGB(70, 70, 250);
+			trail_mat.color.setRGB(Math.random(), Math.random(), Math.random());
 			trail_mat.flatShading = true;
 
 			// Set trail geometry
@@ -173,15 +176,17 @@
 
 		function createBodies() {
 
-			createBody(textures[0]);
-			createBody(textures[1]);
-			createBody(textures[2]);
+			bodies = [];
+
+			createBody(textures[getRandomInt(0, textures.length)]);
+			createBody(textures[getRandomInt(0, textures.length)]);
+			createBody(textures[getRandomInt(0, textures.length)]);
 
 			for (const body of bodies) {
 				body.mesh.position.copy(body.position);
 			}
 
-			camera.position.z = 5;
+			resetCamera();
 		}
 
 		function init() {
@@ -242,8 +247,21 @@
 			animationId = requestAnimationFrame(animate);
 			computeForces();
 			updatePositions();
+			controls.update();
 			renderer.render(scene, camera);
 		}
+
+		function resetCamera() {
+			camera.position.set(0, 0, 5);
+			camera.rotation.set(0, 0, 0);
+		}
+
+		function getRandomInt(min, max) {
+			const minCeiled = Math.ceil(min);
+			const maxFloored = Math.floor(max);
+			return Math.floor(Math.random() * (maxFloored - minCeiled) + minCeiled); // The maximum is exclusive and the minimum is inclusive
+		}
+
 	</script>
 </body>
 
