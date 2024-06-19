@@ -45,6 +45,7 @@
 
 		const G = 1; // Gravitational constant
 		const dt = 0.01; // Time step
+		const max_points = 400; // Points for trailing effect
 
 		const scene = new THREE.Scene();
 		const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -129,73 +130,52 @@
 
 			// TRAIL EFFECT //
 			// Set trail material
-			var traj_material = new THREE.LineBasicMaterial();
-			traj_material.color.setRGB(70, 70, 250);
-			traj_material.flatShading = true;
+			var trail_mat = new THREE.LineBasicMaterial();
+			trail_mat.color.setRGB(70, 70, 250);
+			trail_mat.flatShading = true;
 
 			// Set trail geometry
-			var traj_geometry = new THREE.BufferGeometry();
+			var trail_geometry = new THREE.BufferGeometry();
 			var trace_array = new Array(max_points * 3).fill(0);
-			traj_geometry.setAttribute("position", new THREE.Float32BufferAttribute(trace_array, 3));
+			trail_geometry.setAttribute("position", new THREE.Float32BufferAttribute(trace_array, 3));
 			var drawCount = 0;
-			var trajectory = new THREE.Line(traj_geometry, traj_material);
+			var trail = new THREE.Line(trail_geometry, trail_mat);
 
-			// Add trajectory mesh to the scene
-			scene.add(trajectory);
+			// Add trail mesh to the scene
+			scene.add(trail);
 
 			var body = {
-				mesh: body,
+				mesh: mesh,
 				position: getRandomPosition(),
 				velocity: getRandomVelocity(),
 				weight: getRandomWeight(),
 				radius: 0.2,
 				rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01),
 				trace_array: trace_array,
-				traj_geometry: traj_geometry,
+				trail: trail_geometry,
 				drawCount: drawCount
 			};
 
 			bodies.push(body);
 		}
 
+		function updateTrails() {
+			for (const body of bodies) {
+				body.trace_array.unshift(body.position.x, body.position.y, body.position.z);
+				body.trace_array.splice(max_points * 3);
+				body.trail.attributes.position.copyArray(body.trace_array);
+				body.trail.attributes.position.needsUpdate = true;
+				body.drawCount = THREE.MathUtils.clamp(body.drawCount, 0, max_points);
+				body.trail.setDrawRange(0, body.drawCount);
+				body.drawCount++;
+			}
+		}
+
 		function createBodies() {
-			const geometry = new THREE.SphereGeometry(0.2, 32, 32); // Increased the radius to 0.2
 
-			const body1 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[0], normalMap: textures[0] }));
-			const body2 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[1], normalMap: textures[1] }));
-			const body3 = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: textures[2], normalMap: textures[2] }));
-
-			body1.castShadow = true;
-			body1.receiveShadow = true;
-			body2.castShadow = true;
-			body2.receiveShadow = true;
-			body3.castShadow = true;
-			body3.receiveShadow = true;
-
-			scene.add(body1);
-			scene.add(body2);
-			scene.add(body3);
-
-			// Random initial positions and velocities
-			const getRandomPosition = () => new THREE.Vector3(
-				THREE.MathUtils.randFloatSpread(2),
-				THREE.MathUtils.randFloatSpread(2),
-				THREE.MathUtils.randFloatSpread(2)
-			);
-
-			const getRandomVelocity = () => new THREE.Vector3(
-				THREE.MathUtils.randFloatSpread(0.1),
-				THREE.MathUtils.randFloatSpread(0.1),
-				THREE.MathUtils.randFloatSpread(0.1)
-			);
-
-			const getRandomWeight = () => THREE.MathUtils.randFloat(0.5, 2);
-
-			bodies = [
-				{ mesh: body1, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
-				{ mesh: body2, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) },
-				{ mesh: body3, position: getRandomPosition(), velocity: getRandomVelocity(), weight: getRandomWeight(), radius: 0.2, rotationSpeed: new THREE.Vector3(Math.random() * 0.01, Math.random() * 0.01, Math.random() * 0.01) }
-			];
+			createBody(textures[0]);
+			createBody(textures[1]);
+			createBody(textures[2]);
 
 			for (const body of bodies) {
 				body.mesh.position.copy(body.position);
@@ -206,7 +186,6 @@
 
 		function init() {
 			createBodies();
-			test();
 
 			document.getElementById('resetButton').addEventListener('click', () => {
 				cancelAnimationFrame(animationId);
@@ -254,6 +233,8 @@
 
 				// Constrain the positions to stay within the screen
 				body.position.clamp(new THREE.Vector3(-5, -5, -5), new THREE.Vector3(5, 5, 5));
+
+				updateTrails();
 			}
 		}
 
@@ -264,7 +245,6 @@
 			renderer.render(scene, camera);
 		}
 	</script>
-	<script type="module" src="./physics.js"></script>
 </body>
 
 </html>
