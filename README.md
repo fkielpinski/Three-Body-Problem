@@ -1,1 +1,1 @@
-https://fkielpinski.github.io/three-body-problem/
+https://fkielpinski.github.io/Three-Body-Problem/
