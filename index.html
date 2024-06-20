@@ -123,12 +123,12 @@
 		// Load textures to array
 		const textureLoader = new THREE.TextureLoader();
 		const textures = [
-			textureLoader.load('/textures/texture1.jpg'),
-			textureLoader.load('/textures/texture2.jpg'),
-			textureLoader.load('/textures/texture3.jpg'),
-			textureLoader.load('/textures/texture4.jpg'),
-			textureLoader.load('/textures/texture5.jpg'),
-			textureLoader.load('/textures/texture6.jpg')
+			textureLoader.load('./textures/texture1.jpg'),
+			textureLoader.load('./textures/texture2.jpg'),
+			textureLoader.load('./textures/texture3.jpg'),
+			textureLoader.load('./textures/texture4.jpg'),
+			textureLoader.load('./textures/texture5.jpg'),
+			textureLoader.load('./textures/texture6.jpg')
 		];
 
 		var controls = new OrbitControls(camera, renderer.domElement);
@@ -137,7 +137,7 @@
 
 		// Load HDR texture
 		new RGBELoader()
-			.setPath('/textures/')
+			.setPath('./textures/')
 			.load('HDR_space.hdr', function (texture) {
 				texture.mapping = THREE.EquirectangularReflectionMapping;
 				scene.background = texture;
